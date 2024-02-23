@@ -3,48 +3,48 @@ import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy.signal import butter, lfilter, freqz
 
-# Function to design a Butterworth Low-Pass Filter and apply it
-def butter_lowpass_filter(data, cutoff, fs, order=5):
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-    # Design Butterworth low-pass filter
+def butter_lowpass(cutoff, fs, order=5):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
     b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    # Apply the filter to the data
-    filtered_data = lfilter(b, a, data)
-    return filtered_data
+    return b, a
 
-# Load the wav file
-fs, recorded_noise = wavfile.read('whitenoise.wav')
+def butter_lowpass_filter(data, cutoff, fs, order=5):
+    b, a = butter_lowpass(cutoff, fs, order=order)
+    y = lfilter(b, a, data)
+    return y
 
-# Ensure the audio data is in floating point format for processing
-# Convert it if necessary
-if recorded_noise.dtype != np.float32:
-    # Normalize 16-bit WAV file data
-    recorded_noise = recorded_noise / np.max(np.abs(recorded_noise))
+def plot_frequency_response(data, fs):
+    # Perform FFT
+    n = len(data)
+    T = 1.0 / fs
+    yf = np.fft.fft(data)
+    xf = np.linspace(0.0, 1.0/(2.0*T), n//2)
+    
+    # Plotting
+    plt.figure(figsize=(12, 6))
+    plt.plot(xf, 2.0/n * np.abs(yf[:n//2]))
+    plt.title('Frequency response')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Amplitude')
+    plt.grid()
+    plt.show()
 
-# Design and apply the low-pass filter
-cutoff_frequency = 5000  # Set your cutoff frequency (Hz)
-filtered_noise = butter_lowpass_filter(recorded_noise, cutoff_frequency, fs)
+def main():
+    # Settings
+    order = 6
+    fs, data = wavfile.read('whitenoise.wav')  # load the file
+    cutoff = 1000  # Cutoff frequency of the filter in Hz, adjust as needed
 
-# Perform FFT on the original and filtered signals
-fft_magnitude_original = np.abs(np.fft.rfft(recorded_noise))
-fft_magnitude_filtered = np.abs(np.fft.rfft(filtered_noise))
+    # Ensure the data is in the correct shape
+    if data.ndim > 1:
+        data = data[:, 0]  # Use the first channel if it's stereo
 
-# Frequency bins for plotting
-frequencies = np.fft.rfftfreq(len(recorded_noise), 1/fs)
+    # Apply filter
+    filtered_data = butter_lowpass_filter(data, cutoff, fs, order)
 
-# Plot FFT of original and filtered recorded noise
-plt.figure(figsize=(15, 6))
+    # Plot the frequency response of the filtered signal
+    plot_frequency_response(filtered_data, fs)
 
-# Original signal FFT
-plt.plot(frequencies, fft_magnitude_original, label='Original Noise')
-
-# Filtered signal FFT
-plt.plot(frequencies, fft_magnitude_filtered, label='Filtered Noise')
-
-plt.title('FFT of Recorded Noise and Filtered Noise')
-plt.xlabel('Frequency (Hz)')
-plt.ylabel('Magnitude')
-plt.legend()
-plt.grid(True)
-plt.show()
+if __name__ == "__main__":
+    main()
