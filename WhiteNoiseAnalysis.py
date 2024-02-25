@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
-from scipy.signal import butter, lfilter, freqz
+from scipy.signal import butter, lfilter
 
 def butter_lowpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
@@ -21,12 +21,15 @@ def plot_frequency_response(data, fs):
     yf = np.fft.fft(data)
     xf = np.linspace(0.0, 1.0/(2.0*T), n//2)
     
+    # Convert to dB
+    yf_db = 20 * np.log10(2.0/n * np.abs(yf[:n//2]))
+    
     # Plotting
     plt.figure(figsize=(12, 6))
-    plt.plot(xf, 2.0/n * np.abs(yf[:n//2]))
+    plt.plot(xf, yf_db)
     plt.title('Frequency response')
     plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Amplitude')
+    plt.ylabel('Amplitude (dB)')
     plt.grid()
     plt.show()
 
