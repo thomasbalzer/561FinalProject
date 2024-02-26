@@ -35,7 +35,7 @@ def main():
 
     # Slightly adjust the data to simulate room effect (Example adjustment)
     # This is a placeholder for a subtle effect. You may need a more sophisticated approach for realistic simulation.
-    filtered_data = np.copy(data) * 0.99  # Example subtle change
+    filtered_data = np.copy(data) * 0.70  # Example subtle change
 
     # Plot the frequency response of the original and the slightly adjusted signal
     plot_frequency_response(data, filtered_data, fs)
