@@ -20,6 +20,7 @@ audible_indices = np.where((freq_bins >= audible_start) & (freq_bins <= audible_
 # Convert amplitude to decibel scale
 amplitude_dB = 20 * np.log10(np.abs(fft_data[audible_indices]))
 
+#Test
 # Plot the FFT in decibel scale
 plt.plot(freq_bins[audible_indices], amplitude_dB)
 plt.xlabel('Frequency (Hz)')
