@@ -3,27 +3,25 @@ from scipy.io import wavfile
 
 import matplotlib.pyplot as plt
 
-# Load the audio file
-sample_rate, data = wavfile.read('whitenoise.wav')
+# Step 1: Read the WAV file
+sampling_rate, data = wavfile.read('whitenoise.wav')
 
-# Perform FFT
-fft_data = np.fft.fft(data)
+# Step 2: Compute the FFT
+fft_result = np.fft.fft(data)
+fft_magnitude = np.abs(fft_result)
 
-# Calculate the frequency bins
-freq_bins = np.fft.fftfreq(len(data), 1/sample_rate)
+# Step 3: Calculate Frequency Bins
+n = len(data)
+frequency_bins = np.fft.fftfreq(n, d=1/sampling_rate)
 
-# Find the indices corresponding to the audible spectrum
-audible_start = 20  # Minimum audible frequency (20 Hz)
-audible_end = 20000  # Maximum audible frequency (20,000 Hz)
-audible_indices = np.where((freq_bins >= audible_start) & (freq_bins <= audible_end))
+# Step 4: Normalize the FFT Magnitude
+normalized_fft_magnitude = fft_magnitude / np.max(fft_magnitude)
 
-# Convert amplitude to decibel scale
-amplitude_dB = 20 * np.log10(np.abs(fft_data[audible_indices]))
-
-#Test
-# Plot the FFT in decibel scale
-plt.plot(freq_bins[audible_indices], amplitude_dB)
+# Step 5: Plot the Frequency Response
+plt.figure(figsize=(10, 6))
+plt.plot(frequency_bins[:n // 2], normalized_fft_magnitude[:n // 2])  # Plot only the positive frequencies
+plt.title('Frequency Response of White Noise')
 plt.xlabel('Frequency (Hz)')
-plt.ylabel('Amplitude (dB)')
-plt.title('FFT of whitenoise.wav (Audible Spectrum in dB)')
+plt.ylabel('Magnitude')
+plt.grid(True)
 plt.show()
