@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 # Step 1: Read the WAV file
 sampling_rate, data = wavfile.read('whitenoise.wav')
-
+if data.ndim > 1:
+    data = data[:, 0]  # Use the first channel if it's stereo
 # Step 2: Compute the FFT
 fft_result = np.fft.fft(data)
 fft_magnitude = np.abs(fft_result)
