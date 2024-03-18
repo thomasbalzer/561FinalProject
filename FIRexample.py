@@ -32,7 +32,7 @@ def plot_frequency_responses(fs, signals, titles):
     plt.show()
 
 def main():
-    fs, data = wavfile.read('whitenoise.wav')  # Load the file
+    fs, data = wavfile.read('wavfiles\whitenoise.wav')  # Load the file
     if data.ndim > 1:
         data = data[:, 0]  # Use the first channel if it's stereo
 
@@ -45,7 +45,7 @@ def main():
     highpass_data = apply_fir_filter(data, fs, numtaps, 'highpass', third_fs*2)
     
     # Apply magnitude adjustments
-    lowpass_adjusted = lowpass_data * 0.7
+    lowpass_adjusted = lowpass_data * 0.6
     bandpass_adjusted = bandpass_data * 0.4
     highpass_adjusted = highpass_data * 0.5
     

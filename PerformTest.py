@@ -10,8 +10,8 @@ RATE = 44100              # Bit Rate
 CHUNK = 1024              # Number of audio frames per buffer
 PLAY_SECONDS = 3          # Length of time in seconds to play whitenoise.wav
 RECORD_SECONDS = 3        # Length of time in seconds to record, can be different from PLAY_SECONDS
-WAVE_OUTPUT_FILENAME = "measurement.wav"
-WAVE_INPUT_FILENAME = "whitenoise.wav"
+WAVE_OUTPUT_FILENAME = "wavfiles\measurement.wav"
+WAVE_INPUT_FILENAME = "wavfiles\whitenoise.wav"
 
 # Initialize pyaudio
 audio = pyaudio.PyAudio()
