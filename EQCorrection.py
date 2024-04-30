@@ -33,7 +33,7 @@ def apply_filters(data, filters, gains):
     """Apply the designed filters to the data with adjusted gains and aggregate the outputs."""
     output = np.zeros_like(data)
     for b, gain in zip(filters, gains):
-        filtered_data = signal.lfilter(b * gain, [1.0], data)  # Apply adjusted gain
+        filtered_data = signal.lfilter(b * gain, [1.0], data)
         output += filtered_data
     return output
 
@@ -46,36 +46,26 @@ def main():
     print(f"Frequency range with significant energy: {min_freq} Hz to {max_freq} Hz")
 
     # Design filters based on analyzed frequency range
-    num_filters = 10
-    filters = design_filters(fs, min_freq, max_freq, num_filters)
+    num_filters = 12
+    num_taps = 101
+    filters = design_filters(fs, min_freq, max_freq, num_filters, num_taps)
 
-    # FFT analysis of the original data to use in plotting
-    freq, original_magnitude = fft_analysis(data, fs)
-    
-    # Calculate adjustment factors based on energy in each band
-    adjustment_factors = []
-    total_original_energy = np.sum(original_magnitude ** 2)
-    print("Energy in each band:")
+    # Calculate energy in each band
+    band_energies = []
     for i, b in enumerate(filters):
-        w, h = signal.freqz(b, worN=len(original_magnitude), fs=fs)
-        filter_response = np.abs(h)
-        band_energy = np.sum((filter_response ** 2) * original_magnitude)
-        band_energy_proportion = band_energy / total_original_energy
-        adjustment_factors.append(1 / np.sqrt(band_energy_proportion))  # Normalize to make quieter bands louder
-        print(f"Band {i + 1}: Energy = {band_energy:.2f}, Proportion = {band_energy_proportion:.2f}")
+        filtered_data = signal.lfilter(b, [1.0], data)
+        _, filtered_magnitude = fft_analysis(filtered_data, fs)
+        band_energy = np.sum(filtered_magnitude ** 2)
+        band_energies.append(band_energy)
 
-    # Debug statement to print calculated gains
-    print("Calculated gains for each filter:")
-    for i, gain in enumerate(adjustment_factors):
-        print(f"Filter {i + 1}: Gain = {gain:.2f}")
-
-    # Adjust gains based on calculated factors
-    adjusted_gains = [f for f in adjustment_factors]  # Adjusted gains based on normalized filter responses
+    max_energy = max(band_energies)
+    adjustment_factors = [np.sqrt(max_energy / e) if e > 0 else 1 for e in band_energies]
 
     # Apply filters with adjusted gains
-    filtered_data = apply_filters(data, filters, adjusted_gains)
+    filtered_data = apply_filters(data, filters, adjustment_factors)
 
-    # FFT analysis after filtering
+    # FFT analysis of the original and filtered data
+    freq, original_magnitude = fft_analysis(data, fs)
     _, filtered_magnitude = fft_analysis(filtered_data, fs)
 
     # Plotting results
@@ -98,14 +88,13 @@ def main():
 
     plt.subplot(2, 1, 2)
     for i, b in enumerate(filters):
-        w, h = signal.freqz(b * adjusted_gains[i], worN=8000, fs=fs)  # Apply adjusted gains
+        w, h = signal.freqz(b * adjustment_factors[i], worN=8000, fs=fs)
         plt.plot((fs * 0.5 / np.pi) * w, abs(h), label=f'Filter {i + 1}')
     plt.title('Frequency Responses of Each Bandpass Filter')
     plt.xlabel('Frequency [Hz]')
     plt.ylabel('Gain')
     plt.legend()
     plt.grid(True)
-
     plt.tight_layout()
     plt.show()
 

@@ -2,16 +2,18 @@ import pyaudio
 import wave
 import threading
 import time
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Settings
 FORMAT = pyaudio.paInt16  # Audio format
 CHANNELS = 2              # Number of audio channels
-RATE = 44100              # Bit Rate
+RATE = 44100              # Sample rate
 CHUNK = 1024              # Number of audio frames per buffer
 PLAY_SECONDS = 3          # Length of time in seconds to play whitenoise.wav
 RECORD_SECONDS = 3        # Length of time in seconds to record, can be different from PLAY_SECONDS
-WAVE_OUTPUT_FILENAME = "wavfiles\measurement.wav"
-WAVE_INPUT_FILENAME = "wavfiles\whitenoise.wav"
+WAVE_OUTPUT_FILENAME = "wavfiles/measurement.wav"
+WAVE_INPUT_FILENAME = "wavfiles/whitenoise.wav"
 
 # Initialize pyaudio
 audio = pyaudio.PyAudio()
@@ -49,15 +51,44 @@ def record_audio(record_time):
     wf.writeframes(b''.join(frames))
     wf.close()
 
+# Plot FFT of the recorded audio from WAV file
+def plot_fft_from_file(filename):
+    wf = wave.open(filename, 'rb')
+    # Read data
+    data = wf.readframes(wf.getnframes())
+    audio_data = np.frombuffer(data, dtype=np.int16)
+    # If stereo, take only one channel
+    if wf.getnchannels() == 2:
+        audio_data = audio_data[0::2]
+    # FFT
+    fft_data = np.fft.rfft(audio_data)
+    fft_abs = np.abs(fft_data)
+    freq = np.fft.rfftfreq(len(audio_data), d=1./wf.getframerate())
+    
+    # Plotting
+    plt.figure(figsize=(10, 4))
+    plt.plot(freq, fft_abs)
+    plt.title('FFT of Recorded Audio')
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Amplitude')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.grid(True)
+    plt.show()
+    wf.close()
+
 # Start play and record threads
 if __name__ == "__main__":
     t1 = threading.Thread(target=play_audio, args=(PLAY_SECONDS,))
     t2 = threading.Thread(target=record_audio, args=(RECORD_SECONDS,))
-
+    
     t1.start()
     t2.start()
-
+    
     t1.join()
     t2.join()
 
     audio.terminate()
+    
+    # After threads are done, plot FFT from WAV file
+    plot_fft_from_file(WAVE_OUTPUT_FILENAME)

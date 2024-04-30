@@ -12,12 +12,22 @@ def apply_filter(data, filter_coefficients, gain=1.0):
     filtered_data = signal.lfilter(filter_coefficients, [1.0], data)
     return filtered_data * gain
 
-def fft_analysis(data, fs):
-    """Perform FFT analysis and return frequency bins and magnitude spectrum."""
-    fft_data = np.fft.rfft(data)
-    freq = np.fft.rfftfreq(len(data), 1/fs)
+def fft_analysis(data, fs, n_fft=8192):
+    """Compute the FFT of the data and return frequency bins and magnitude spectrum."""
+    fft_data = np.fft.rfft(data, n_fft)
+    freq = np.fft.rfftfreq(n_fft, 1/fs)
     magnitude = np.abs(fft_data)
     return freq, magnitude
+
+def analyze_frequency_range(data, fs, threshold=0.01, n_fft=8192):
+    """Analyze the audio to find the frequency range with significant energy."""
+    freq, magnitude = fft_analysis(data, fs, n_fft)
+    significant = magnitude > (np.max(magnitude) * threshold)
+    min_freq = np.min(freq[significant]) if np.any(significant) else 20
+    max_freq = np.max(freq[significant]) if np.any(significant) else fs / 2 - 1
+    min_freq = max(min_freq, 1)
+    max_freq = min(max_freq, fs / 2 - 1)
+    return min_freq, max_freq
 
 def main():
     # Load existing white noise
@@ -27,13 +37,13 @@ def main():
     # Calculate the frequency bands ensuring they are within valid range
     nyquist = fs / 2
     num_filters = 3
-    low_freqs = np.linspace(20, nyquist - 100, num_filters + 1)[:-1]  # Starting at 20 to avoid 0Hz, ending a bit below Nyquist
-    high_freqs = np.linspace(20, nyquist - 100, num_filters + 1)[1:]  # Ensuring the upper cutoffs do not cause an error
-    bands = list(zip(low_freqs, high_freqs))
-    gains = [0.1, 1, 1.8]  # Adjustable gains for each filter band
+    low_freqs, high_freqs = analyze_frequency_range(data, fs)
+    bands = np.linspace(low_freqs, high_freqs, num_filters + 1)
+    band_pairs = [(bands[i], bands[i + 1]) for i in range(len(bands) - 1)]
+    gains = [0.2, 0.8, 0.4]  # Adjustable gains for each filter band
 
     # Design filters and apply them with respective gains
-    filters = [design_bandpass_filter(low, high, fs) for low, high in bands]
+    filters = [design_bandpass_filter(low, high, fs) for low, high in band_pairs]
     filtered_signal = np.zeros_like(data)
     for bpf, gain in zip(filters, gains):
         filtered_signal += apply_filter(data, bpf, gain)
