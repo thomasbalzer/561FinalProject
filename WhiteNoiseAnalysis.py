@@ -18,12 +18,8 @@ WAVE_INPUT_FILENAME = "wavfiles/whitenoise.wav"
 # Initialize pyaudio
 audio = pyaudio.PyAudio()
 
-# Initialize the synchronization event
-start_recording_event = threading.Event()
-
 # Play audio function
 def play_audio(play_time):
-    global start_recording_event
     wf = wave.open(WAVE_INPUT_FILENAME, 'rb')
     stream = audio.open(format=audio.get_format_from_width(wf.getsampwidth()),
                         channels=wf.getnchannels(),
@@ -36,14 +32,11 @@ def play_audio(play_time):
         data = wf.readframes(CHUNK)
     stream.stop_stream()
     stream.close()
-    # Signal that playback has started
-    start_recording_event.set()
 
-# Record audio function
+# Record audio function with added delay
 def record_audio(record_time):
-    global start_recording_event
-    # Wait until playback has started
-    start_recording_event.wait()
+    # Delay to allow playback to start
+    time.sleep(0.5)  # Adjust this delay as needed
     stream = audio.open(format=FORMAT, channels=CHANNELS,
                         rate=RATE, input=True,
                         frames_per_buffer=CHUNK)
