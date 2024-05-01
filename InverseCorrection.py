@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy.fft import fft, fftfreq, ifft
-from scipy.signal import firwin, lfilter
+from scipy.signal import firwin, lfilter, savgol_filter, hamming
 
 def apply_fir_filter(data, fs, numtaps, filter_type, cutoffs):
     if filter_type == 'lowpass':
@@ -16,67 +16,89 @@ def apply_fir_filter(data, fs, numtaps, filter_type, cutoffs):
     filtered_data = lfilter(taps, 1.0, data)
     return filtered_data, taps
 
-def inverse_filter_design(fs, signal, numtaps, regularization=0.001):
-    fft_signal = fft(signal)/max(fft(signal))
-    inverse_fft = 1 / (np.abs(fft_signal) + regularization) * np.exp(1j * np.angle(fft_signal))
+def inverse_filter_design_with_fitted_curve(fs, signal, numtaps, regularization=0.01, window_length=101, polyorder=3, fit_order=5):
+    fft_signal = fft(signal)
+    magnitude = np.abs(fft_signal)
+    phase = np.angle(fft_signal)
+    
+    normalized_magnitude = magnitude / np.max(magnitude)
+    smoothed_magnitude = savgol_filter(normalized_magnitude, window_length, polyorder)
 
-    # Window function to reduce artifacts
+    inverse_magnitude = 1 / (smoothed_magnitude + regularization)
+    freqs = fftfreq(len(signal), 1/fs)
+    coeffs = np.polyfit(freqs[:len(signal)//2], inverse_magnitude[:len(signal)//2], fit_order)
+    fitted_inverse = np.polyval(coeffs, freqs[:len(signal)//2])
+    fitted_full = np.concatenate([fitted_inverse, fitted_inverse[::-1]])
+
+    inverse_fft = fitted_full * np.exp(1j * phase[:len(fitted_full)])
     taps_complex = ifft(inverse_fft)[:numtaps]
-    taps_complex *= np.hamming(numtaps)
+    taps_complex *= hamming(numtaps)
     
-    return taps_complex
+    return taps_complex, magnitude, smoothed_magnitude, fitted_inverse
 
-def plot_frequency_responses(fs, signals, titles):
-    plt.figure(figsize=(12, 6))
-    for signal, title in zip(signals, titles):
-        N = len(signal)
-        f = fftfreq(N, 1/fs)[:N//2]
-        fft_signal = np.abs(fft(signal))[:N//2]
-        plt.plot(f, fft_signal/np.max(fft_signal), label=title, alpha=0.7)
-    
-    plt.title('Frequency Responses')
+def plot_results(fs, original_signal, corrected_signal, smoothed_magnitude, fitted_inverse):
+    # Frequency domain for plots
+    freqs = fftfreq(len(original_signal), 1/fs)[:len(original_signal)//2]
+
+    # Original Signal FFT Magnitude
+    original_fft_magnitude = np.abs(fft(original_signal))[:len(original_signal)//2]
+
+    # Corrected Signal FFT Magnitude
+    corrected_fft_magnitude = np.abs(fft(corrected_signal))[:len(corrected_signal)//2]
+
+    plt.figure(figsize=(15, 12))
+
+    # Plot 1: Smoothed and Fitted Inverse Magnitude
+    plt.subplot(3, 1, 1)
+    plt.plot(freqs, smoothed_magnitude[:len(freqs)], label='Smoothed Magnitude', linestyle='--')
+    plt.plot(freqs, fitted_inverse, label='Fitted Inverse Magnitude')
+    plt.title('Smoothed and Fitted Inverse Magnitude')
+    plt.ylabel('Magnitude')
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 2: Original FFT Magnitude
+    plt.subplot(3, 1, 2)
+    plt.plot(freqs, original_fft_magnitude, label='Original FFT Magnitude')
+    plt.title('Original FFT Magnitude')
+    plt.ylabel('Magnitude')
+    plt.legend()
+    plt.grid(True)
+
+    # Plot 3: Corrected FFT Magnitude
+    plt.subplot(3, 1, 3)
+    plt.plot(freqs, corrected_fft_magnitude, label='Corrected FFT Magnitude')
+    plt.title('Corrected FFT Magnitude')
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Magnitude')
-    plt.grid(True)
     plt.legend()
+    plt.grid(True)
+
+    plt.tight_layout()
     plt.show()
 
-def align_signals(reference_signal, signal_to_align, numtaps):
-    # Estimate delay
-    delay = numtaps // 2
-    # Zero-padding to align signals
-    aligned_signal = np.roll(signal_to_align, -delay)
-    return aligned_signal
-
 def main():
-    fs, data = wavfile.read('wavfiles\whitenoise.wav')  # Path to your white noise file
+    fs, data = wavfile.read('wavfiles/measurement.wav')
     if data.ndim > 1:
-        data = data[:, 0]  # Use the first channel if stereo
+        data = data[:, 0]
 
-    numtaps = 201 
+    numtaps = 1001
     third_fs = fs // 6
 
-    # Apply filters
+    # Process the signal
     lowpass_data, _ = apply_fir_filter(data, fs, numtaps, 'lowpass', third_fs)
     bandpass_data, _ = apply_fir_filter(data, fs, numtaps, 'bandpass', [third_fs, third_fs*2])
     highpass_data, _ = apply_fir_filter(data, fs, numtaps, 'highpass', third_fs*2)
-
-    # Create composite signal
     composite_signal = lowpass_data * 0.6 + bandpass_data * 0.4 + highpass_data * 0.5
 
-    # Design inverse filter
-    correction_taps = inverse_filter_design(fs, composite_signal, numtaps)
+    # Design the correction filter
+    correction_taps, original_fft, smoothed_fft, fitted_inverse = inverse_filter_design_with_fitted_curve(fs, composite_signal, numtaps)
 
-    # Apply inverse filter
-    corrected_signal = lfilter(correction_taps.real, [1.0], composite_signal)
+    # Apply the correction filter
+    corrected_signal = lfilter(correction_taps.real, 1.0, composite_signal)
 
-    # Align corrected signal with the original composite signal
-    aligned_corrected_signal = align_signals(composite_signal, corrected_signal, numtaps)
+    # Visualize the results
+    plot_results(fs, composite_signal, corrected_signal, smoothed_fft, fitted_inverse)
 
-    # Plot responses
-    signals = [composite_signal, aligned_corrected_signal, correction_taps.real]
-    titles = ['Composite Signal', 'Aligned Corrected Signal', 'Correction Filter']
-    plot_frequency_responses(fs, signals, titles)
-
-# Run the main function
-main()
+if __name__ == "__main__":
+    main()
