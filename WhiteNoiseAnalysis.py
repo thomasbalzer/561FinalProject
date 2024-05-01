@@ -6,17 +6,22 @@ import threading
 import time
 
 # Function to play WAV file
-def play_wav(filename):
+def play_wav(filename, volume=0.1):  # volume ranges from 0.0 to 1.0
     wf = wave.open(filename, 'rb')
     p = pyaudio.PyAudio()
     stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                     channels=wf.getnchannels(),
                     rate=wf.getframerate(),
                     output=True)
+    
     data = wf.readframes(1024)
     while data:
-        stream.write(data)
+        # Reduce volume by scaling the data
+        audio_data = np.frombuffer(data, dtype=np.int16)  # Assumes 16-bit audio
+        lowered_audio_data = (audio_data * volume).astype(np.int16)  # Scale and convert back
+        stream.write(lowered_audio_data.tobytes())
         data = wf.readframes(1024)
+    
     stream.stop_stream()
     stream.close()
     p.terminate()
@@ -63,7 +68,7 @@ def record_audio_and_fft(output_filename, record_seconds):
 
 # Play the WAV file and record simultaneously
 filename_to_play = 'wavfiles/whitenoise.wav'
-output_filename = 'wavefiles/measurement.wav'
+output_filename = 'wavfiles/measurement.wav'
 record_seconds = 3  # Set to 3 seconds
 
 # Start recording in a separate thread
