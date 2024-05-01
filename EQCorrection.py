@@ -41,6 +41,10 @@ def main():
     filename = 'wavfiles/measurement.wav'
     data, fs = sf.read(filename)
 
+    # Convert stereo to mono if necessary
+    if data.ndim == 2:
+        data = np.mean(data, axis=1)
+
     # Analyze frequency range of the audio file
     min_freq, max_freq = analyze_frequency_range(data, fs)
     print(f"Frequency range with significant energy: {min_freq} Hz to {max_freq} Hz")
