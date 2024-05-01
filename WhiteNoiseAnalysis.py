@@ -45,8 +45,10 @@ def record_audio_and_fft(output_filename, record_seconds):
     wf.writeframes(b''.join(frames))
     wf.close()
 
-    # FFT analysis (same as before)
-    frames_numpy = np.frombuffer(b''.join(frames), dtype=np.int8)  # Adjust dtype according to the selected format
+    # FFT analysis
+    raw_bytes = b''.join(frames)  # Concatenate all frame bytes
+    # Assemble bytes into an array of 32-bit integers
+    frames_numpy = np.frombuffer(raw_bytes, dtype=np.uint8).view(np.int32)
     fft_result = np.fft.rfft(frames_numpy)
     freqs = np.fft.rfftfreq(len(frames_numpy), 1/RATE)
     
@@ -61,8 +63,8 @@ def record_audio_and_fft(output_filename, record_seconds):
 
 # Play the WAV file and record simultaneously
 filename_to_play = 'wavfiles/whitenoise.wav'
-output_filename = 'wavefiles/recorded_output.wav'
-record_seconds = 10
+output_filename = 'wavefiles/measurement.wav'
+record_seconds = 3  # Set to 3 seconds
 
 # Start recording in a separate thread
 recording_thread = threading.Thread(target=record_audio_and_fft, args=(output_filename, record_seconds))
