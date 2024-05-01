@@ -3,14 +3,14 @@ import scipy.signal as signal
 import matplotlib.pyplot as plt
 import soundfile as sf
 
-def fft_analysis(data, fs, n_fft=8192):
+def fft_analysis(data, fs, n_fft=4096):
     """Compute the FFT of the data and return frequency bins and magnitude spectrum."""
     fft_data = np.fft.rfft(data, n_fft)
     freq = np.fft.rfftfreq(n_fft, 1/fs)
     magnitude = np.abs(fft_data)
     return freq, magnitude
 
-def analyze_frequency_range(data, fs, threshold=0.01, n_fft=8192):
+def analyze_frequency_range(data, fs, threshold=0.01, n_fft=4096):
     """Analyze the audio to find the frequency range with significant energy."""
     freq, magnitude = fft_analysis(data, fs, n_fft)
     significant = magnitude > (np.max(magnitude) * threshold)
