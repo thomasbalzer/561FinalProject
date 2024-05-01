@@ -38,7 +38,7 @@ def apply_filters(data, filters, gains):
     return output
 
 def main():
-    filename = 'wavfiles/measurement.wav'
+    filename = 'recorded_output.wav'
     data, fs = sf.read(filename)
 
     # Convert stereo to mono if necessary
