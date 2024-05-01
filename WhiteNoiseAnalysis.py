@@ -60,8 +60,8 @@ def record_audio_and_fft(output_filename, record_seconds):
     plt.show()
 
 # Play the WAV file and record simultaneously
-filename_to_play = 'whitenoise.wav'
-output_filename = 'recorded_output.wav'
+filename_to_play = 'wavfiles/whitenoise.wav'
+output_filename = 'wavefiles/recorded_output.wav'
 record_seconds = 10
 
 # Start recording in a separate thread
