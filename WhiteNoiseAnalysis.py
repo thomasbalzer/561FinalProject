@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # Settings
 FORMAT = pyaudio.paInt16  # Audio format
-CHANNELS = 2              # Number of audio channels
+CHANNELS = 1             # Number of audio channels
 RATE = 44100              # Sample rate
 CHUNK = 1024              # Number of audio frames per buffer
 PLAY_SECONDS = 3          # Length of time in seconds to play whitenoise.wav
