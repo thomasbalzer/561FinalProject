@@ -1,53 +1,80 @@
+import pyaudio
+import wave
 import numpy as np
 import matplotlib.pyplot as plt
-import pyaudio
-import scipy.fftpack
+import threading
+import time
 
-# Constants
-FORMAT = pyaudio.paInt16  # Audio format (16-bit PCM)
-CHANNELS = 1  # Single channel for microphone
-RATE = 44100  # Sampling rate
-CHUNK = 1024  # Number of audio samples per frame
-DURATION = 5  # Duration in seconds to record
+# Function to play WAV file
+def play_wav(filename):
+    wf = wave.open(filename, 'rb')
+    p = pyaudio.PyAudio()
+    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                    channels=wf.getnchannels(),
+                    rate=wf.getframerate(),
+                    output=True)
+    data = wf.readframes(1024)
+    while data:
+        stream.write(data)
+        data = wf.readframes(1024)
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
 
-# Initialize PyAudio
-p = pyaudio.PyAudio()
+# Modified function to record audio with a different format and perform FFT analysis
+def record_audio_and_fft(output_filename, record_seconds):
+    FORMAT = pyaudio.paInt24  # Change to 24-bit format
+    CHANNELS = 2
+    RATE = 44100
+    CHUNK = 1024
+    p = pyaudio.PyAudio()
+    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+    print("Recording...")
+    frames = []
+    for _ in range(0, int(RATE / CHUNK * record_seconds)):
+        data = stream.read(CHUNK)
+        frames.append(data)
+    print("Finished recording.")
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+    wf = wave.open(output_filename, 'wb')
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(p.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(frames))
+    wf.close()
 
-# Open stream
-stream = p.open(format=FORMAT,
-                channels=CHANNELS,
-                rate=RATE,
-                input=True,
-                frames_per_buffer=CHUNK)
+    # FFT analysis (same as before)
+    frames_numpy = np.frombuffer(b''.join(frames), dtype=np.int8)  # Adjust dtype according to the selected format
+    fft_result = np.fft.rfft(frames_numpy)
+    freqs = np.fft.rfftfreq(len(frames_numpy), 1/RATE)
+    
+    plt.figure()
+    plt.plot(freqs, np.abs(fft_result))
+    plt.title("Frequency spectrum of the recorded audio")
+    plt.xlabel("Frequency (Hz)")
+    plt.ylabel("Amplitude")
+    plt.xlim(20, 20000)
+    plt.xscale('log')
+    plt.show()
 
-print("Recording...")
+# Play the WAV file and record simultaneously
+filename_to_play = 'whitenoise.wav'
+output_filename = 'recorded_output.wav'
+record_seconds = 10
 
-frames = []
+# Start recording in a separate thread
+recording_thread = threading.Thread(target=record_audio_and_fft, args=(output_filename, record_seconds))
+recording_thread.start()
 
-# Record for a few seconds
-for _ in range(0, int(RATE / CHUNK * DURATION)):
-    data = stream.read(CHUNK)
-    frames.append(np.fromstring(data, dtype=np.int16))
+# Wait briefly for the recording to start
+time.sleep(0.5)
 
-print("Finished recording.")
+# Play the WAV file
+play_wav(filename_to_play)
 
-# Stop and close the stream
-stream.stop_stream()
-stream.close()
-p.terminate()
+# Wait for recording to finish
+recording_thread.join()
 
-# Convert the list of numpy-arrays into a single numpy-array.
-signal = np.concatenate(frames)
-
-# FFT
-N = len(signal)
-yf = scipy.fftpack.fft(signal)
-xf = np.linspace(0.0, 1.0/(2.0*(1/RATE)), N//2)
-
-# Plot
-plt.plot(xf, 2.0/N * np.abs(yf[:N//2]))
-plt.grid()
-plt.title("FFT of Recorded Signal")
-plt.xlabel("Frequency (Hz)")
-plt.ylabel("Amplitude")
-plt.show()
+print("Playback and recording finished.")
