@@ -18,8 +18,12 @@ WAVE_INPUT_FILENAME = "wavfiles/whitenoise.wav"
 # Initialize pyaudio
 audio = pyaudio.PyAudio()
 
+# Initialize the synchronization event
+start_recording_event = threading.Event()
+
 # Play audio function
 def play_audio(play_time):
+    global start_recording_event
     wf = wave.open(WAVE_INPUT_FILENAME, 'rb')
     stream = audio.open(format=audio.get_format_from_width(wf.getsampwidth()),
                         channels=wf.getnchannels(),
@@ -32,9 +36,14 @@ def play_audio(play_time):
         data = wf.readframes(CHUNK)
     stream.stop_stream()
     stream.close()
+    # Signal that playback has started
+    start_recording_event.set()
 
 # Record audio function
 def record_audio(record_time):
+    global start_recording_event
+    # Wait until playback has started
+    start_recording_event.wait()
     stream = audio.open(format=FORMAT, channels=CHANNELS,
                         rate=RATE, input=True,
                         frames_per_buffer=CHUNK)
@@ -54,18 +63,13 @@ def record_audio(record_time):
 # Plot FFT of the recorded audio from WAV file
 def plot_fft_from_file(filename):
     wf = wave.open(filename, 'rb')
-    # Read data
     data = wf.readframes(wf.getnframes())
     audio_data = np.frombuffer(data, dtype=np.int16)
-    # If stereo, take only one channel
     if wf.getnchannels() == 2:
         audio_data = audio_data[0::2]
-    # FFT
     fft_data = np.fft.rfft(audio_data)
     fft_abs = np.abs(fft_data)
-    freq = np.fft.rfftfreq(len(audio_data), d=1./wf.getframerate())
-    
-    # Plotting
+    freq = np.fft.rfftfreq(len(audio_data), d=1./RATE)
     plt.figure(figsize=(10, 4))
     plt.plot(freq, fft_abs)
     plt.title('FFT of Recorded Audio')
