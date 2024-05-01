@@ -53,6 +53,14 @@ def record_audio(record_time):
     wf.writeframes(b''.join(frames))
     wf.close()
 
+# FFT analysis function
+def fft_analysis(data, fs, n_fft=8192):
+    """Compute the FFT of the data and return frequency bins and magnitude spectrum."""
+    fft_data = np.fft.rfft(data, n_fft)
+    freq = np.fft.rfftfreq(n_fft, 1/fs)
+    magnitude = np.abs(fft_data)
+    return freq, magnitude
+
 # Plot FFT of the recorded audio from WAV file
 def plot_fft_from_file(filename):
     wf = wave.open(filename, 'rb')
@@ -60,17 +68,14 @@ def plot_fft_from_file(filename):
     audio_data = np.frombuffer(data, dtype=np.int16)
     if wf.getnchannels() == 2:
         audio_data = audio_data[0::2]
-    fft_data = np.fft.rfft(audio_data)
-    fft_abs = np.abs(fft_data)
-    freq = np.fft.rfftfreq(len(audio_data), d=1./RATE)
-    plt.figure(figsize=(10, 4))
-    plt.plot(freq, fft_abs)
+    freq, magnitude = fft_analysis(audio_data, RATE)
+    plt.figure(figsize=(10, 5))
+    plt.plot(freq, magnitude)
     plt.title('FFT of Recorded Audio')
     plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Amplitude')
-    plt.xscale('log')
-    plt.yscale('log')
+    plt.ylabel('Magnitude')
     plt.grid(True)
+    plt.xlim(0, RATE / 2)  # Limit x-axis to Nyquist frequency
     plt.show()
     wf.close()
 
