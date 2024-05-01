@@ -68,8 +68,11 @@ def main():
     freq, original_magnitude = fft_analysis(data, fs)
     _, filtered_magnitude = fft_analysis(filtered_data, fs)
 
+    # Adjusting the figure size and DPI for Raspberry Pi touchscreen
+    plt.figure(figsize=(8, 6), dpi=80)  # Smaller figure size for small screens
+    plt.subplots_adjust(hspace=0.5, wspace=0.4)  # Adjust spacing to prevent overlap
+
     # Plotting results
-    plt.figure(figsize=(15, 10))
     plt.subplot(2, 2, 1)
     plt.semilogy(freq, original_magnitude, label='Original Magnitude')
     plt.title('FFT of Original Signal')
@@ -95,7 +98,7 @@ def main():
     plt.ylabel('Gain')
     plt.legend()
     plt.grid(True)
-    plt.tight_layout()
+    plt.tight_layout()  # This will optimize the layout of the plots
     plt.show()
 
 if __name__ == "__main__":
