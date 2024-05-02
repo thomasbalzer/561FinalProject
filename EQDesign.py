@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import csv
 
-def fft_analysis(data, fs, n_fft=4096):
+def fft_analysis(data, fs, n_fft=8096):
     fft_data = np.fft.rfft(data, n_fft)
     freq = np.fft.rfftfreq(n_fft, 1/fs)
     magnitude = np.abs(fft_data)
     return freq, magnitude
 
-def analyze_frequency_range(data, fs, threshold=0.01, n_fft=4096):
+def analyze_frequency_range(data, fs, threshold=0.01, n_fft=8096):
     freq, magnitude = fft_analysis(data, fs, n_fft)
     significant = magnitude > (np.max(magnitude) * threshold)
     min_freq = np.min(freq[significant]) if np.any(significant) else 20
@@ -52,7 +52,7 @@ def main():
     print(f"Frequency range with significant energy: {min_freq} Hz to {max_freq} Hz")
 
     num_filters = 12
-    num_taps = 101
+    num_taps = 301
     filters = design_filters(fs, min_freq, max_freq, num_filters, num_taps)
 
     # Calculate energy in each band and compute adjustment factors
