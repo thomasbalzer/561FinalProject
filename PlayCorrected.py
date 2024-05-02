@@ -21,8 +21,9 @@ def load_filters(csv_file):
 def apply_filters(data, filters, gains):
     filtered_data = np.zeros_like(data)
     for b, gain in zip(filters, gains):
-        filtered_output = signal.lfilter(b * gain, [1.0], data)
-        filtered_data += filtered_output
+        for ch in range(data.shape[1]):  # Apply filters to each channel
+            filtered_output = signal.lfilter(b * gain, [1.0], data[:, ch])
+            filtered_data[:, ch] += filtered_output
     return filtered_data
 
 def audio_stream_generator(file_path, block_size):
@@ -31,8 +32,6 @@ def audio_stream_generator(file_path, block_size):
             data = sf_file.read(block_size)
             if len(data) == 0:
                 break
-            if data.ndim > 1:
-                data = np.mean(data, axis=1)  # Convert to mono if stereo
             yield data
 
 def play_audio(file_path, filters, gains):
@@ -42,9 +41,10 @@ def play_audio(file_path, filters, gains):
     def callback(outdata, frames, time, status):
         try:
             data = next(data_generator)
+            if data.shape[1] < 2:
+                data = np.column_stack((data, data))  # Ensure data has two channels
             filtered_data = apply_filters(data, filters, gains)
-            stereo_data = np.column_stack((filtered_data, filtered_data))
-            outdata[:] = stereo_data
+            outdata[:] = filtered_data
         except StopIteration:
             outdata.fill(0)  # Fill remaining buffer with zeros
             raise sd.CallbackStop
