@@ -82,4 +82,7 @@ def main():
     song_path = os.path.join(directory, songs[0])
     print(f"Playing: {song_path}")
     
-    play_audio
+    play_audio(song_path, filters, gains)
+
+if __name__ == "__main__":
+    main()
