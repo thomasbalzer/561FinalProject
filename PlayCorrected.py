@@ -21,9 +21,15 @@ def load_filters(csv_file):
 def apply_filters(data, filters, gains):
     filtered_data = np.zeros_like(data)
     for b, gain in zip(filters, gains):
-        for ch in range(data.shape[1]):  # Apply filters to each channel
+        for ch in range(data.shape[1]):
             filtered_output = signal.lfilter(b * gain, [1.0], data[:, ch])
             filtered_data[:, ch] += filtered_output
+
+    # Normalize the filtered output to avoid clipping
+    max_amp = np.abs(filtered_data).max()
+    if max_amp > 1:
+        filtered_data /= max_amp
+
     return filtered_data
 
 def audio_stream_generator(file_path, block_size):
@@ -76,7 +82,4 @@ def main():
     song_path = os.path.join(directory, songs[0])
     print(f"Playing: {song_path}")
     
-    play_audio(song_path, filters, gains)
-
-if __name__ == "__main__":
-    main()
+    play_audio
