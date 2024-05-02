@@ -1,3 +1,4 @@
+import os
 import soundfile as sf
 import sounddevice as sd
 
@@ -10,9 +11,17 @@ def play_audio(file_path):
     sd.wait()  # Wait until file is done playing
 
 def main():
-    file_path = 'songs\Kid Charlemagne.wav'  # Change this to the path of your song
-    print(f"Playing: {file_path}")
-    play_audio(file_path)
+    directory = 'songs'  # The directory containing the songs
+    songs = [f for f in os.listdir(directory) if f.endswith('.wav')]
+    
+    if not songs:
+        print("No songs found in the directory.")
+        return
+
+    # Just playing the first song for demonstration
+    song_path = os.path.join(directory, songs[0])
+    print(f"Playing: {song_path}")
+    play_audio(song_path)
 
 if __name__ == "__main__":
     main()
