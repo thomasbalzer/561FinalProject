@@ -25,19 +25,39 @@ def apply_filters(data, filters, gains):
         filtered_data += filtered_output
     return filtered_data
 
+def audio_stream_generator(file_path, block_size):
+    with sf.SoundFile(file_path) as sf_file:
+        while True:
+            data = sf_file.read(block_size)
+            if len(data) == 0:
+                break
+            if data.ndim > 1:
+                data = np.mean(data, axis=1)  # Convert to mono if stereo
+            yield data
+
 def play_audio(file_path, filters, gains):
-    data, fs = sf.read(file_path)
-    if data.ndim > 1:
-        data = np.mean(data, axis=1)  # Convert to mono if stereo
+    block_size = 1024  # Block size for chunks
+    data_generator = audio_stream_generator(file_path, block_size)
 
-    filtered_data = apply_filters(data, filters, gains)
+    def callback(outdata, frames, time, status):
+        try:
+            data = next(data_generator)
+            filtered_data = apply_filters(data, filters, gains)
+            stereo_data = np.column_stack((filtered_data, filtered_data))
+            outdata[:] = stereo_data
+        except StopIteration:
+            outdata.fill(0)  # Fill remaining buffer with zeros
+            raise sd.CallbackStop
 
-    # Ensuring the audio is in two channels
-    stereo_data = np.column_stack((filtered_data, filtered_data))
+    # Get the sample rate from the file
+    with sf.SoundFile(file_path) as sf_file:
+        fs = sf_file.samplerate
 
-    # Play audio
-    sd.play(stereo_data, fs)
-    sd.wait()
+    stream = sd.OutputStream(samplerate=fs, channels=2, callback=callback, blocksize=block_size)
+    with stream:
+        stream.start()
+        print("Playback started... press Ctrl+C to stop.")
+        input('Press Enter to stop playback...')
 
 def main():
     directory = 'songs'
