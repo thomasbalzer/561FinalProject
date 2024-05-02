@@ -2,16 +2,15 @@ import numpy as np
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 import soundfile as sf
+import csv
 
 def fft_analysis(data, fs, n_fft=4096):
-    """Compute the FFT of the data and return frequency bins and magnitude spectrum."""
     fft_data = np.fft.rfft(data, n_fft)
     freq = np.fft.rfftfreq(n_fft, 1/fs)
     magnitude = np.abs(fft_data)
     return freq, magnitude
 
 def analyze_frequency_range(data, fs, threshold=0.01, n_fft=4096):
-    """Analyze the audio to find the frequency range with significant energy."""
     freq, magnitude = fft_analysis(data, fs, n_fft)
     significant = magnitude > (np.max(magnitude) * threshold)
     min_freq = np.min(freq[significant]) if np.any(significant) else 20
@@ -21,7 +20,6 @@ def analyze_frequency_range(data, fs, threshold=0.01, n_fft=4096):
     return min_freq, max_freq
 
 def design_filters(fs, min_freq, max_freq, num_filters, numtaps=101):
-    """Design bandpass filters within specified frequency bounds."""
     frequencies = np.linspace(min_freq, max_freq, num_filters + 1)
     filters = []
     for i in range(num_filters):
@@ -30,33 +28,36 @@ def design_filters(fs, min_freq, max_freq, num_filters, numtaps=101):
     return filters
 
 def apply_filters(data, filters, gains):
-    """Apply the designed filters to the data with adjusted gains and aggregate the outputs."""
     output = np.zeros_like(data)
     for b, gain in zip(filters, gains):
         filtered_data = signal.lfilter(b * gain, [1.0], data)
         output += filtered_data
     return output
 
+def save_filters_to_file(filters, adjustment_factors, filename='filter_coefficients.csv'):
+    with open(filename, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Filter Number', 'Adjustment Factor', 'Filter Coefficients'])
+        for i, (filter_coeffs, factor) in enumerate(zip(filters, adjustment_factors)):
+            writer.writerow([i + 1, factor] + list(filter_coeffs))
+
 def main():
     filename = 'wavfiles/measurement.wav'
     data, fs = sf.read(filename)
 
-    # Convert stereo to mono if necessary
     if data.ndim == 2:
         data = np.mean(data, axis=1)
 
-    # Analyze frequency range of the audio file
     min_freq, max_freq = analyze_frequency_range(data, fs)
     print(f"Frequency range with significant energy: {min_freq} Hz to {max_freq} Hz")
 
-    # Design filters based on analyzed frequency range
     num_filters = 12
     num_taps = 101
     filters = design_filters(fs, min_freq, max_freq, num_filters, num_taps)
 
-    # Calculate energy in each band
+    # Calculate energy in each band and compute adjustment factors
     band_energies = []
-    for i, b in enumerate(filters):
+    for b in filters:
         filtered_data = signal.lfilter(b, [1.0], data)
         _, filtered_magnitude = fft_analysis(filtered_data, fs)
         band_energy = np.sum(filtered_magnitude ** 2)
@@ -65,19 +66,15 @@ def main():
     max_energy = max(band_energies)
     adjustment_factors = [np.sqrt(max_energy / e) if e > 0 else 1 for e in band_energies]
 
-    # Apply filters with adjusted gains
+    save_filters_to_file(filters, adjustment_factors)  # Save filter coefficients with adjustment factors
+
     filtered_data = apply_filters(data, filters, adjustment_factors)
 
-    # FFT analysis of the original and filtered data
-    freq, original_magnitude = fft_analysis(data, fs)
-    _, filtered_magnitude = fft_analysis(filtered_data, fs)
+    plt.figure(figsize=(8, 6), dpi=80)
+    plt.subplots_adjust(hspace=0.5, wspace=0.4)
 
-    # Adjusting the figure size and DPI for Raspberry Pi touchscreen
-    plt.figure(figsize=(8, 6), dpi=80)  # Smaller figure size for small screens
-    plt.subplots_adjust(hspace=0.5, wspace=0.4)  # Adjust spacing to prevent overlap
-
-    # Plotting results
     plt.subplot(2, 2, 1)
+    freq, original_magnitude = fft_analysis(data, fs)
     plt.semilogy(freq, original_magnitude, label='Original Magnitude')
     plt.title('FFT of Original Signal')
     plt.xlabel('Frequency (Hz)')
@@ -86,6 +83,7 @@ def main():
     plt.grid(True)
 
     plt.subplot(2, 2, 2)
+    freq, filtered_magnitude = fft_analysis(filtered_data, fs)
     plt.semilogy(freq, filtered_magnitude, label='Filtered Magnitude')
     plt.title('FFT of Filtered Signal')
     plt.xlabel('Frequency (Hz)')
@@ -102,7 +100,8 @@ def main():
     plt.ylabel('Gain')
     plt.legend()
     plt.grid(True)
-    plt.tight_layout()  # This will optimize the layout of the plots
+
+    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":

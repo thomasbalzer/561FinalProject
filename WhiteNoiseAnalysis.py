@@ -5,31 +5,36 @@ import matplotlib.pyplot as plt
 import threading
 import time
 
-# Function to play WAV file
-def play_wav(filename, volume=0.1):  # volume ranges from 0.0 to 1.0
+# Function to play WAV file with adjustable length
+def play_wav(filename, play_seconds, volume=0.1):
     wf = wave.open(filename, 'rb')
     p = pyaudio.PyAudio()
     stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                     channels=wf.getnchannels(),
                     rate=wf.getframerate(),
                     output=True)
+
+    frames_per_buffer = 1024
+    total_frames = int(wf.getframerate() / frames_per_buffer * play_seconds)
+    played_frames = 0
     
-    data = wf.readframes(1024)
-    while data:
+    data = wf.readframes(frames_per_buffer)
+    while data and played_frames < total_frames:
         # Reduce volume by scaling the data
         audio_data = np.frombuffer(data, dtype=np.int16)  # Assumes 16-bit audio
         lowered_audio_data = (audio_data * volume).astype(np.int16)  # Scale and convert back
         stream.write(lowered_audio_data.tobytes())
-        data = wf.readframes(1024)
+        data = wf.readframes(frames_per_buffer)
+        played_frames += 1
     
     stream.stop_stream()
     stream.close()
     p.terminate()
 
-# Modified function to record audio with a different format and perform FFT analysis
+# Function to record audio and perform FFT analysis with adjustable recording length
 def record_audio_and_fft(output_filename, record_seconds):
     FORMAT = pyaudio.paInt24  # Change to 24-bit format
-    CHANNELS = 2
+    CHANNELS = 1
     RATE = 44100
     CHUNK = 1024
     p = pyaudio.PyAudio()
@@ -52,7 +57,6 @@ def record_audio_and_fft(output_filename, record_seconds):
 
     # FFT analysis
     raw_bytes = b''.join(frames)  # Concatenate all frame bytes
-    # Assemble bytes into an array of 32-bit integers
     frames_numpy = np.frombuffer(raw_bytes, dtype=np.uint8).view(np.int32)
     fft_result = np.fft.rfft(frames_numpy)
     freqs = np.fft.rfftfreq(len(frames_numpy), 1/RATE)
@@ -66,10 +70,12 @@ def record_audio_and_fft(output_filename, record_seconds):
     plt.xscale('log')
     plt.show()
 
-# Play the WAV file and record simultaneously
+# User input for durations
+play_seconds = 2
+record_seconds = 2
+
 filename_to_play = 'wavfiles/whitenoise.wav'
 output_filename = 'wavfiles/measurement.wav'
-record_seconds = 3  # Set to 3 seconds
 
 # Start recording in a separate thread
 recording_thread = threading.Thread(target=record_audio_and_fft, args=(output_filename, record_seconds))
@@ -79,7 +85,7 @@ recording_thread.start()
 time.sleep(0.5)
 
 # Play the WAV file
-play_wav(filename_to_play)
+play_wav(filename_to_play, play_seconds)
 
 # Wait for recording to finish
 recording_thread.join()
