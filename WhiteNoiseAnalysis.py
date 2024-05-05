@@ -55,9 +55,10 @@ def record_audio_and_fft(output_filename, record_seconds):
     wf.writeframes(b''.join(frames))
     wf.close()
 
-    # FFT analysis
+    # Concatenate all frames into one bytes object
     raw_bytes = b''.join(frames)
-    frames_numpy = np.frombuffer(raw_bytes, dtype=np.int24).view(np.float32)  # Proper type for 24-bit
+    # Convert byte data to numpy array of int32 type
+    frames_numpy = np.frombuffer(raw_bytes, dtype=np.int8).astype(np.int32)
     fft_result = np.fft.rfft(frames_numpy)
     freqs = np.fft.rfftfreq(len(frames_numpy), 1/RATE)
 
