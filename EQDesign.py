@@ -10,19 +10,17 @@ def fft_analysis(data, fs, n_fft=8096):
     magnitude = np.abs(fft_data)
     return freq, magnitude
 
-def analyze_frequency_range(data, fs, threshold=0.01, n_fft=8096):
-    freq, magnitude = fft_analysis(data, fs, n_fft)
-    significant = magnitude > (np.max(magnitude) * threshold)
-    min_freq = np.min(freq[significant]) if np.any(significant) else 20
-    max_freq = np.max(freq[significant]) if np.any(significant) else fs / 2 - 1
-    min_freq = max(min_freq, 1)
-    max_freq = min(max_freq, fs / 2 - 1)
+def analyze_frequency_range(data, fs):
+    # Start from a small value above 0 Hz, up to 22 kHz, not exceeding fs/2
+    min_freq = 1  # Start slightly above 0 Hz to avoid design issues
+    max_freq = min(22000, fs / 2 - 1)  # Ensure it does not exceed Nyquist frequency
     return min_freq, max_freq
 
 def design_filters(fs, min_freq, max_freq, num_filters, numtaps=101):
     frequencies = np.linspace(min_freq, max_freq, num_filters + 1)
     filters = []
     for i in range(num_filters):
+        # Create bandpass filters between consecutive frequency points
         b = signal.firwin(numtaps, [frequencies[i], frequencies[i + 1]], pass_zero=False, fs=fs, window='hamming')
         filters.append(b)
     return filters

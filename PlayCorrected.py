@@ -27,7 +27,7 @@ def apply_filters(data, filters, gains):
         filtered_data /= max_amp
     return filtered_data
 
-def play_audio(file_path, filters, gains, buffer_size=16048):  # Adjust buffer size if needed
+def play_audio(file_path, filters, gains, buffer_size=1024):  # Adjust buffer size if needed
     data, fs = sf.read(file_path, dtype='float32')
     if data.ndim > 1:
         data = data.mean(axis=1)  # Convert to mono if stereo
