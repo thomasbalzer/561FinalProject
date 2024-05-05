@@ -39,23 +39,22 @@ def save_filters_to_file(filters, adjustment_factors, filename='filter_coefficie
         writer = csv.writer(file)
         writer.writerow(['Filter Number', 'Adjustment Factor', 'Filter Coefficients'])
         for i, (filter_coeffs, factor) in enumerate(zip(filters, adjustment_factors)):
-            writer.writerow([i + 1, factor] + list(filter_coeffs))
+            capped_factor = min(factor, 2)  # Cap to prevent excessive gain
+            writer.writerow([i + 1, capped_factor] + list(filter_coeffs))
 
 def main():
     filename = 'wavfiles/measurement.wav'
     data, fs = sf.read(filename)
-
     if data.ndim == 2:
         data = np.mean(data, axis=1)
 
     min_freq, max_freq = analyze_frequency_range(data, fs)
     print(f"Frequency range with significant energy: {min_freq} Hz to {max_freq} Hz")
 
-    num_filters = 12
-    num_taps = 301
+    num_filters = 10
+    num_taps = 101
     filters = design_filters(fs, min_freq, max_freq, num_filters, num_taps)
 
-    # Calculate energy in each band and compute adjustment factors
     band_energies = []
     for b in filters:
         filtered_data = signal.lfilter(b, [1.0], data)
@@ -64,9 +63,9 @@ def main():
         band_energies.append(band_energy)
 
     max_energy = max(band_energies)
-    adjustment_factors = [np.sqrt(max_energy / e) if e > 0 else 1 for e in band_energies]
+    adjustment_factors = [min(np.sqrt(max_energy / e), 2) if e > 0 else 1 for e in band_energies]
 
-    save_filters_to_file(filters, adjustment_factors)  # Save filter coefficients with adjustment factors
+    save_filters_to_file(filters, adjustment_factors)
 
     filtered_data = apply_filters(data, filters, adjustment_factors)
 

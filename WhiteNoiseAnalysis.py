@@ -17,23 +17,22 @@ def play_wav(filename, play_seconds, volume=0.1):
     frames_per_buffer = 1024
     total_frames = int(wf.getframerate() / frames_per_buffer * play_seconds)
     played_frames = 0
-    
+
     data = wf.readframes(frames_per_buffer)
     while data and played_frames < total_frames:
-        # Reduce volume by scaling the data
         audio_data = np.frombuffer(data, dtype=np.int16)  # Assumes 16-bit audio
-        lowered_audio_data = (audio_data * volume).astype(np.int16)  # Scale and convert back
+        lowered_audio_data = (audio_data * volume).astype(np.int16)
         stream.write(lowered_audio_data.tobytes())
         data = wf.readframes(frames_per_buffer)
         played_frames += 1
-    
+
     stream.stop_stream()
     stream.close()
     p.terminate()
 
 # Function to record audio and perform FFT analysis with adjustable recording length
 def record_audio_and_fft(output_filename, record_seconds):
-    FORMAT = pyaudio.paInt24  # Change to 24-bit format
+    FORMAT = pyaudio.paInt24  # 24-bit format
     CHANNELS = 1
     RATE = 44100
     CHUNK = 1024
@@ -48,6 +47,7 @@ def record_audio_and_fft(output_filename, record_seconds):
     stream.stop_stream()
     stream.close()
     p.terminate()
+
     wf = wave.open(output_filename, 'wb')
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(p.get_sample_size(FORMAT))
@@ -56,18 +56,19 @@ def record_audio_and_fft(output_filename, record_seconds):
     wf.close()
 
     # FFT analysis
-    raw_bytes = b''.join(frames)  # Concatenate all frame bytes
-    frames_numpy = np.frombuffer(raw_bytes, dtype=np.uint8).view(np.int32)
+    raw_bytes = b''.join(frames)
+    frames_numpy = np.frombuffer(raw_bytes, dtype=np.int24).view(np.float32)  # Proper type for 24-bit
     fft_result = np.fft.rfft(frames_numpy)
     freqs = np.fft.rfftfreq(len(frames_numpy), 1/RATE)
-    
+
     plt.figure()
     plt.plot(freqs, np.abs(fft_result))
-    plt.title("Frequency spectrum of the recorded audio")
+    plt.title("Frequency Spectrum of the Recorded Audio")
     plt.xlabel("Frequency (Hz)")
     plt.ylabel("Amplitude")
-    plt.xlim(20, 20000)
-    plt.xscale('log')
+    plt.xscale('linear')
+    plt.yscale('log')
+    plt.xlim(20, 20000)  # Audible range
     plt.show()
 
 # User input for durations
