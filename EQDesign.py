@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import csv
 
-def fft_analysis(data, fs, n_fft=8096):
+def fft_analysis(data, fs, n_fft=4096):
     fft_data = np.fft.rfft(data, n_fft)
     freq = np.fft.rfftfreq(n_fft, 1/fs)
     magnitude = np.abs(fft_data)

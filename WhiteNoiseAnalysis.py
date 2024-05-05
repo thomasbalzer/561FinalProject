@@ -69,7 +69,7 @@ def record_audio_and_fft(output_filename, record_seconds):
     plt.ylabel("Amplitude")
     plt.xscale('linear')
     plt.yscale('log')
-    plt.xlim(20, 20000)  # Audible range
+    plt.xlim(20, 22000)  # Audible range
     plt.show()
 
 # User input for durations
