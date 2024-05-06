@@ -40,7 +40,7 @@ def main():
     low_freqs, high_freqs = analyze_frequency_range(data, fs)
     bands = np.linspace(low_freqs, high_freqs, num_filters + 1)
     band_pairs = [(bands[i], bands[i + 1]) for i in range(len(bands) - 1)]
-    gains = [1, 1, 1]  # Adjustable gains for each filter band
+    gains = [0.5, 1, 0.8]  # Adjustable gains for each filter band
 
     # Design filters and apply them with respective gains
     filters = [design_bandpass_filter(low, high, fs) for low, high in band_pairs]
